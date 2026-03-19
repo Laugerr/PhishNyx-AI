@@ -27,6 +27,15 @@ def render_flag_items(flags: list[str]) -> str:
     return html
 
 
+def render_url_items(urls: list[str]) -> str:
+    if not urls:
+        return '<div class="info-text">No URLs found in the submitted email body.</div>'
+    html = ""
+    for url in urls:
+        html += f'<div class="check-item">🔗 {url}</div>'
+    return html
+
+
 st.set_page_config(
     page_title="PhishNyx AI",
     page_icon="🌑",
@@ -82,7 +91,6 @@ with left:
     )
 
     analyze_clicked = st.button("🔍 Analyze Threat", use_container_width=True)
-
     st.markdown("</div>", unsafe_allow_html=True)
 
 with right:
@@ -98,10 +106,10 @@ with right:
                 <div class="check-item">🔐 Credential harvesting phrases</div>
                 <div class="check-item">👤 Generic greetings</div>
                 <div class="check-item">🌐 Suspicious sender domains</div>
-                <div class="check-item">🚨 Social engineering patterns</div>
+                <div class="check-item">🔗 Risky URLs and shortened links</div>
             </div>
             <div class="info-foot">
-                Next upgrades: URL intelligence, AI explanations, downloadable reports, and training mode.
+                Next upgrades: JSON export, AI explanations, downloadable reports, and training mode.
             </div>
         </div>
         """,
@@ -119,6 +127,8 @@ if analyze_clicked:
         recommendation = result["recommendation"]
         summary = result.get("summary", "No summary available.")
         sender_display = sender.strip() if sender.strip() else "Not provided"
+        urls_found = result.get("urls_found", [])
+        url_score = result.get("url_score", 0)
 
         st.markdown('<div class="results-wrap">', unsafe_allow_html=True)
 
@@ -152,8 +162,9 @@ if analyze_clicked:
             st.markdown(
                 f"""
                 <div class="metric-card floating-card">
-                    <div class="metric-label">Sender</div>
-                    <div class="metric-sub sender-box">{sender_display}</div>
+                    <div class="metric-label">URL Risk Contribution</div>
+                    <div class="metric-value">{url_score}</div>
+                    <div class="metric-sub">{len(urls_found)} URL(s) extracted</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -198,8 +209,18 @@ if analyze_clicked:
                 <div class="glass-card recommend-card">
                     <div class="section-title">💡 Recommended Action</div>
                     <div class="recommend-box">{recommendation}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.markdown(
+                f"""
+                <div class="glass-card">
+                    <div class="section-title">🔗 Extracted URLs</div>
+                    {render_url_items(urls_found)}
                     <div class="info-foot" style="margin-top: 16px;">
-                        This assessment is based on the current PhishNyx rule engine. Stronger intelligence can be added next.
+                        URL analysis is now part of the phishing score and highlights hidden link-based risks.
                     </div>
                 </div>
                 """,
