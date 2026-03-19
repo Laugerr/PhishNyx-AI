@@ -1,15 +1,19 @@
 def calculate_score(flags):
     score = 0
 
-    weights = {
-        "urgent language": 15,
-        "credential request": 25,
-        "generic greeting": 10,
-        "suspicious sender": 20,
-    }
-
     for flag in flags:
-        score += weights.get(flag, 5)
+        flag_lower = flag.lower()
+
+        if "urgent language" in flag_lower:
+            score += 15
+        elif "credential" in flag_lower or "verification request" in flag_lower:
+            score += 25
+        elif "generic greeting" in flag_lower:
+            score += 10
+        elif "suspicious sender" in flag_lower or "domain pattern" in flag_lower:
+            score += 20
+        else:
+            score += 5
 
     return min(score, 100)
 
@@ -17,7 +21,6 @@ def calculate_score(flags):
 def get_verdict(score):
     if score < 25:
         return "Low Risk"
-    elif score < 50:
+    if score < 50:
         return "Suspicious"
-    else:
-        return "Likely Phishing"
+    return "Likely Phishing"
