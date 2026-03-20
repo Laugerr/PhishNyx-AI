@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timezone
+import re
 
 
 def build_report_payload(sender: str, subject: str, analysis_result: dict) -> dict:
@@ -20,3 +21,10 @@ def build_report_payload(sender: str, subject: str, analysis_result: dict) -> di
 def generate_json_report(sender: str, subject: str, analysis_result: dict) -> str:
     report_payload = build_report_payload(sender, subject, analysis_result)
     return json.dumps(report_payload, indent=4)
+
+
+def build_report_filename(analysis_result: dict) -> str:
+    verdict = analysis_result.get("verdict", "unknown").lower()
+    safe_verdict = re.sub(r"[^a-z0-9]+", "-", verdict).strip("-") or "unknown"
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
+    return f"phishnyx_{safe_verdict}_{timestamp}.json"

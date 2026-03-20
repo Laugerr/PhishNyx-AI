@@ -1,11 +1,23 @@
 from core.indicators import (
     URGENT_WORDS,
     CREDENTIAL_WORDS,
+    PAYMENT_WORDS,
+    ATTACHMENT_WORDS,
+    SUSPICIOUS_BRANDS,
     GENERIC_GREETINGS,
     SUSPICIOUS_DOMAINS,
 )
 from core.scorer import calculate_score, get_verdict
 from core.url_checks import analyze_urls
+
+
+def has_display_name_mismatch(sender: str) -> bool:
+    if not sender or "<" not in sender or ">" not in sender:
+        return False
+
+    display_name = sender.split("<", 1)[0].strip().lower()
+    email_part = sender.split("<", 1)[1].split(">", 1)[0].strip().lower()
+    return bool(display_name and email_part and display_name not in email_part)
 
 
 def analyze_email(sender, subject, body):
@@ -29,6 +41,22 @@ def analyze_email(sender, subject, body):
     if any(domain in sender_lower for domain in SUSPICIOUS_DOMAINS):
         flags.append("Suspicious sender domain pattern detected")
         details.append("The sender address contains domain patterns often used in impersonation or phishing.")
+
+    if any(word in text for word in PAYMENT_WORDS):
+        flags.append("Payment or invoice pressure language detected")
+        details.append("Unexpected payment or invoice language is often used in business email compromise and billing scams.")
+
+    if any(word in text for word in ATTACHMENT_WORDS):
+        flags.append("Attachment lure language detected")
+        details.append("Phishing emails frequently pressure recipients to open attached files or documents.")
+
+    if has_display_name_mismatch(sender):
+        flags.append("Display name impersonation pattern detected")
+        details.append("The sender display name does not align cleanly with the underlying email address.")
+
+    if any(brand in text for brand in SUSPICIOUS_BRANDS) and any(domain in sender_lower for domain in SUSPICIOUS_DOMAINS):
+        flags.append("Brand impersonation cues detected")
+        details.append("Brand references combined with suspicious sender patterns can indicate impersonation attempts.")
 
     url_result = analyze_urls(body)
     if url_result["flags"]:

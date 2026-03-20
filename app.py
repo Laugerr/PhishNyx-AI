@@ -1,10 +1,11 @@
 import json
 from pathlib import Path
+from datetime import datetime
 
 import streamlit as st
 
 from core.analyzer import analyze_email
-from core.report import generate_json_report
+from core.report import build_report_filename, generate_json_report
 
 
 def load_css(file_name: str) -> None:
@@ -121,6 +122,33 @@ def build_analyst_explanation(result: dict | None) -> str:
     )
 
 
+def build_recent_scan_item(sender: str, subject: str, result: dict) -> dict:
+    return {
+        "sender": sender.strip() or "Not provided",
+        "subject": subject.strip() or "No subject",
+        "verdict": result["verdict"],
+        "score": result["score"],
+        "timestamp": datetime.now().strftime("%H:%M"),
+    }
+
+
+def render_recent_scans(history: list[dict]) -> str:
+    if not history:
+        return '<div class="status-empty">Recent analyses will appear here after you scan an email.</div>'
+
+    html = ""
+    for item in history:
+        html += (
+            '<div class="history-item">'
+            f'<div class="history-top"><span class="history-verdict">{item["verdict"]}</span>'
+            f'<span class="history-score">{item["score"]}/100</span></div>'
+            f'<div class="history-subject">{item["subject"]}</div>'
+            f'<div class="history-meta">{item["sender"]} &bull; {item["timestamp"]}</div>'
+            '</div>'
+        )
+    return html
+
+
 st.set_page_config(
     page_title="PhishNyx AI",
     page_icon="P",
@@ -137,6 +165,8 @@ if "subject_input" not in st.session_state:
     st.session_state.subject_input = ""
 if "body_input" not in st.session_state:
     st.session_state.body_input = ""
+if "recent_scans" not in st.session_state:
+    st.session_state.recent_scans = []
 
 st.markdown(
     """
@@ -223,6 +253,7 @@ with left:
 
 result = None
 report_json = None
+report_file_name = "phishnyx_report.json"
 
 if analyze_clicked:
     if not body.strip():
@@ -230,6 +261,9 @@ if analyze_clicked:
     else:
         result = analyze_email(sender, subject, body)
         report_json = generate_json_report(sender, subject, result)
+        report_file_name = build_report_filename(result)
+        scan_item = build_recent_scan_item(sender, subject, result)
+        st.session_state.recent_scans = [scan_item, *st.session_state.recent_scans[:4]]
 
 score = result["score"] if result else 0
 verdict = result["verdict"] if result else "Awaiting Analysis"
@@ -350,7 +384,7 @@ with center:
         st.download_button(
             "Download Report (.json)",
             data=report_json,
-            file_name="phishnyx_report.json",
+            file_name=report_file_name,
             mime="application/json",
             use_container_width=True,
         )
@@ -381,6 +415,20 @@ with right:
         """
                 <div class="side-copy">
                     The current engine evaluates sender reputation patterns, social engineering language, and URL-based signals to simulate analyst triage.
+                </div>
+                <div class="sidebar-card recent-scans-card">
+                    <div class="block-heading"><span>LOG</span><span>Recent Scans</span></div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        render_recent_scans(st.session_state.recent_scans),
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
                 </div>
             </div>
         </div>

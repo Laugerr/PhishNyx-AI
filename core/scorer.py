@@ -12,6 +12,14 @@ def calculate_score(flags, url_score=0):
             score += 10
         elif "suspicious sender" in flag_lower or "domain pattern" in flag_lower:
             score += 20
+        elif "payment" in flag_lower or "invoice" in flag_lower:
+            score += 15
+        elif "attachment lure" in flag_lower or "attachment-themed" in flag_lower:
+            score += 15
+        elif "display-name impersonation" in flag_lower or "display name impersonation" in flag_lower:
+            score += 20
+        elif "brand impersonation" in flag_lower:
+            score += 15
         elif "shortened url" in flag_lower:
             score += 15
         elif "ip-based url" in flag_lower or "raw ip" in flag_lower:
