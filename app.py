@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import streamlit as st
@@ -19,6 +20,15 @@ def verdict_class(score: int) -> str:
     if score < 50:
         return "risk-mid"
     return "risk-high"
+
+
+def load_sample_emails() -> list[dict]:
+    sample_path = Path("data/sample_emails.json")
+    if not sample_path.exists():
+        return []
+
+    with open(sample_path, "r", encoding="utf-8") as sample_file:
+        return json.load(sample_file)
 
 
 def render_flag_items(flags: list[str]) -> str:
@@ -79,6 +89,38 @@ def shield_state(score: int, verdict: str) -> tuple[str, str]:
     return "shield-safe", "OK"
 
 
+def build_analyst_explanation(result: dict | None) -> str:
+    if not result:
+        return (
+            "Submit or load an email sample to generate an analyst-style explanation of the "
+            "verdict, key signals, and recommended handling steps."
+        )
+
+    verdict = result["verdict"]
+    flags = result.get("flags", [])
+    details = result.get("details", [])
+    urls_found = result.get("urls_found", [])
+    url_score = result.get("url_score", 0)
+
+    if not flags:
+        return (
+            "No strong phishing indicators were triggered by the current rule set. The message "
+            "still deserves normal verification hygiene, but the analyzer did not find high-signal "
+            "social engineering or link-based risk patterns."
+        )
+
+    lead_detail = details[0] if details else "The result is driven by rule-based phishing indicators."
+    url_context = (
+        f" URL analysis added {url_score} risk points across {len(urls_found)} extracted link(s)."
+        if url_score > 0
+        else ""
+    )
+    return (
+        f"This email was classified as {verdict.lower()} after PhishNyx identified "
+        f"{len(flags)} phishing indicator(s). {lead_detail}{url_context}"
+    )
+
+
 st.set_page_config(
     page_title="PhishNyx AI",
     page_icon="P",
@@ -87,6 +129,14 @@ st.set_page_config(
 )
 
 load_css("styles.css")
+sample_emails = load_sample_emails()
+
+if "sender_input" not in st.session_state:
+    st.session_state.sender_input = ""
+if "subject_input" not in st.session_state:
+    st.session_state.subject_input = ""
+if "body_input" not in st.session_state:
+    st.session_state.body_input = ""
 
 st.markdown(
     """
@@ -138,18 +188,34 @@ with left:
         unsafe_allow_html=True,
     )
 
+    if sample_emails:
+        st.markdown(
+            '<div class="sample-strip-title">Sample Scenarios</div>',
+            unsafe_allow_html=True,
+        )
+        sample_columns = st.columns(len(sample_emails), gap="small")
+        for column, sample in zip(sample_columns, sample_emails):
+            with column:
+                if st.button(sample["label"], key=f'sample_{sample["id"]}', use_container_width=True):
+                    st.session_state.sender_input = sample["sender"]
+                    st.session_state.subject_input = sample["subject"]
+                    st.session_state.body_input = sample["body"]
+
     sender = st.text_input(
         "Sender Email",
         placeholder="e.g. support@secure-login-paypal.com",
+        key="sender_input",
     )
     subject = st.text_input(
         "Email Subject",
         placeholder="e.g. Urgent: Verify Your Account Immediately",
+        key="subject_input",
     )
     body = st.text_area(
         "Email Body",
         placeholder="Paste the suspicious email body here...",
         height=220,
+        key="body_input",
     )
     analyze_clicked = st.button("Analyze Threat", use_container_width=True)
 
@@ -174,6 +240,7 @@ recommendation = result["recommendation"] if result else (
 summary = result.get("summary", "No summary available.") if result else (
     "PhishNyx will score the message, identify phishing indicators, and present a SOC-style triage view."
 )
+analyst_explanation = build_analyst_explanation(result)
 urls_found = result.get("urls_found", []) if result else []
 url_score = result.get("url_score", 0) if result else 0
 sender_display = sender.strip() if sender.strip() else "Not provided"
@@ -242,6 +309,15 @@ with center:
         <div class="recommend-card result-block result-action-block">
             <div class="block-heading result-block-heading"><span class="heading-pill">ACT</span><span>Recommended Action</span></div>
             <div class="analysis-summary">{recommendation}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        f"""
+        <div class="recommend-card result-block result-explain-block">
+            <div class="block-heading result-block-heading"><span class="heading-pill">WHY</span><span>Analyst Explanation</span></div>
+            <div class="analysis-summary">{analyst_explanation}</div>
         </div>
         """,
         unsafe_allow_html=True,

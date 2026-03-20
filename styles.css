@@ -1,18 +1,9 @@
 :root {
-    --bg-deep: #060917;
-    --bg-panel: rgba(19, 26, 58, 0.9);
-    --bg-panel-2: rgba(30, 38, 77, 0.84);
-    --line-cyan: rgba(112, 217, 255, 0.35);
-    --line-orange: rgba(255, 169, 96, 0.4);
     --text-main: #f3f7ff;
     --text-soft: #b8c7e8;
     --text-dim: #8c9cc5;
-    --cyan: #78e7ff;
     --cyan-strong: #9cf3ff;
-    --orange: #ffb26b;
     --orange-strong: #ffd28d;
-    --danger: #ff8f77;
-    --success: #b2ffe4;
 }
 
 html, body, [class*="css"] {
@@ -418,13 +409,26 @@ header[data-testid="stHeader"] {
     z-index: 1;
 }
 
-.metric-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.55rem;
-    margin-bottom: 0.55rem;
-    position: relative;
-    z-index: 1;
+.sample-strip-title {
+    margin-bottom: 0.45rem;
+    color: #ffcf93;
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.05rem;
+    text-transform: uppercase;
+}
+
+.input-shell [data-testid="stHorizontalBlock"] {
+    align-items: stretch;
+}
+
+.input-shell [data-testid="column"] {
+    display: flex;
+    align-self: stretch;
+}
+
+.input-shell [data-testid="column"] > div {
+    width: 100%;
 }
 
 .metric-card {
@@ -518,11 +522,6 @@ header[data-testid="stHeader"] {
 .result-header-decor span:nth-child(3) {
     width: 12px;
     background: linear-gradient(90deg, rgba(255, 174, 117, 0.85), rgba(255, 213, 169, 0.95));
-}
-
-.result-metric-grid {
-    gap: 0.7rem;
-    margin-bottom: 0.7rem;
 }
 
 .result-metric-card {
@@ -714,36 +713,6 @@ header[data-testid="stHeader"] {
     border-color: rgba(120, 145, 240, 0.28);
 }
 
-.metric-card.alert {
-    background: linear-gradient(180deg, rgba(72, 40, 44, 0.94), rgba(56, 29, 31, 0.94));
-    border-color: rgba(255, 153, 114, 0.3);
-    box-shadow:
-        inset 0 0 18px rgba(255, 179, 132, 0.08),
-        0 0 18px rgba(255, 126, 83, 0.08);
-}
-
-.metric-label {
-    color: var(--text-soft);
-    font-size: 0.82rem;
-    font-weight: 800;
-    margin-bottom: 0.45rem;
-}
-
-.metric-value {
-    color: var(--text-main);
-    font-size: 1.55rem;
-    line-height: 1.05;
-    font-weight: 900;
-}
-
-.metric-sub {
-    margin-top: 0.2rem;
-    color: var(--text-dim);
-    font-size: 0.75rem;
-    font-weight: 700;
-}
-
-.result-summary-card,
 .flag-card,
 .recommend-card,
 .url-card,
@@ -780,13 +749,6 @@ header[data-testid="stHeader"] {
     color: var(--text-soft);
     line-height: 1.5;
     font-size: 0.9rem;
-}
-
-.mini-row {
-    margin-top: 0.4rem;
-    color: var(--text-dim);
-    font-size: 0.8rem;
-    font-weight: 700;
 }
 
 .flag-item,
@@ -1017,6 +979,19 @@ label, .stTextInput label, .stTextArea label {
         inset 0 0 20px rgba(184, 237, 255, 0.12),
         0 12px 26px rgba(15, 50, 121, 0.24);
     transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+[data-testid="column"] .stButton > button {
+    height: 2.35rem;
+    min-height: 2.35rem;
+    font-size: 0.76rem;
+    padding: 0.38rem 0.45rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .stButton > button:hover,
@@ -1295,10 +1270,6 @@ label, .stTextInput label, .stTextArea label {
     .hero-badge {
         min-width: unset;
         width: 100%;
-    }
-
-    .metric-grid {
-        grid-template-columns: 1fr;
     }
 
     .result-summary-strip {

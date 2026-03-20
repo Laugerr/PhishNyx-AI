@@ -1,0 +1,23 @@
+[
+    {
+        "id": "paypal_lockout",
+        "label": "PayPal Lockout",
+        "sender": "support@secure-login-paypal.com",
+        "subject": "Urgent: Verify Your Account Immediately",
+        "body": "Dear Customer,\n\nYour account has been limited. Please verify your login immediately to avoid suspension.\n\nClick here now:\nhttp://192.168.1.44/login\nhttps://bit.ly/secure-payal-check\n\nRegards,\nPayPal Support"
+    },
+    {
+        "id": "microsoft_reset",
+        "label": "Microsoft Reset",
+        "sender": "alerts@mail-verification-microsoft.com",
+        "subject": "Action Required: Reset your password now",
+        "body": "Dear user,\n\nWe detected unusual activity on your Microsoft 365 account. Reset your password immediately to secure your mailbox.\n\nVerify account:\nhttps://tinyurl.com/m365-secure-reset\n\nSecurity Team"
+    },
+    {
+        "id": "invoice_followup",
+        "label": "Vendor Invoice",
+        "sender": "accounts@vendor-ops.com",
+        "subject": "Updated invoice for March services",
+        "body": "Hi Lauger,\n\nAttached is the updated invoice for March services. Let me know if you want us to resend the PDF through the client portal.\n\nThanks,\nMila"
+    }
+]
