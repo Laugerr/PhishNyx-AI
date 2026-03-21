@@ -4,6 +4,8 @@ from core.indicators import (
     PAYMENT_WORDS,
     ATTACHMENT_WORDS,
     HIGH_RISK_ATTACHMENT_PHRASES,
+    SUSPICIOUS_ATTACHMENT_KEYWORDS,
+    ARCHIVE_LURE_TERMS,
     BENIGN_ATTACHMENT_EXTENSIONS,
     SUSPICIOUS_ATTACHMENT_EXTENSIONS,
     SUSPICIOUS_BRANDS,
@@ -65,6 +67,17 @@ def has_benign_attachment_type(filename: str) -> bool:
 
 def has_high_risk_attachment_phrase(text: str) -> bool:
     return any(phrase in text for phrase in HIGH_RISK_ATTACHMENT_PHRASES)
+
+
+def has_suspicious_attachment_name(filename: str) -> bool:
+    lowered = filename.lower().strip()
+    return any(keyword in lowered for keyword in SUSPICIOUS_ATTACHMENT_KEYWORDS)
+
+
+def has_archive_lure(text: str, filename: str) -> bool:
+    lowered_filename = filename.lower().strip()
+    archive_extension = lowered_filename.endswith(".zip") or lowered_filename.endswith(".rar")
+    return archive_extension or any(term in text for term in ARCHIVE_LURE_TERMS)
 
 
 def has_payment_pressure(text: str) -> bool:
@@ -158,6 +171,14 @@ def analyze_email(sender, subject, body, display_name="", reply_to="", return_pa
         if has_double_extension(attachment_name):
             flags.append("Double-extension attachment naming detected")
             details.append("Multiple file extensions can be used to disguise the true nature of an attachment.")
+
+        if has_suspicious_attachment_name(attachment_name) and not has_benign_attachment_type(attachment_name):
+            flags.append("Suspicious attachment filename pattern detected")
+            details.append("The attachment name uses phishing-associated terms often seen in credential, billing, or malware lures.")
+
+        if has_archive_lure(text, attachment_name):
+            flags.append("Archive-style attachment lure detected")
+            details.append("Archive-based delivery or archive-style instructions are commonly used to stage malicious payloads.")
 
         if has_benign_attachment_type(attachment_name) and not suspicious_attachment_context:
             details.append("The attachment type appears common for normal business communication and did not independently raise the score.")

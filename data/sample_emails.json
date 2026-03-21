@@ -23,7 +23,7 @@
         "return_path": "mailer@auth-review.net",
         "subject": "Action Required: Reset your password now",
         "attachment_name": "Password_Reset_Form.html",
-        "body": "Dear user,\n\nWe detected unusual activity on your Microsoft 365 account. Reset your password immediately to secure your mailbox.\n\nVerify account:\nhttps://tinyurl.com/m365-secure-reset\n\nSecurity Team"
+        "body": "Dear user,\n\nWe detected unusual activity on your Microsoft 365 account. Reset your password immediately to secure your mailbox.\n\nReview the attached html file and confirm your login now.\n\nVerify account:\nhttps://tinyurl.com/m365-secure-reset\n\nSecurity Team"
     },
     {
         "id": "ceo_wire_fraud",
@@ -49,7 +49,20 @@
         "return_path": "bounce@drive-review-alerts.net",
         "subject": "A document has been shared with you",
         "attachment_name": "Shared_Document_View.html",
-        "body": "Dear user,\n\nA confidential HR document has been shared with you. Open the attachment to review the file securely and confirm access before the share expires.\n\nRegards,\nGoogle Drive"
+        "body": "Dear user,\n\nA confidential HR document has been shared with you. Open the attachment to review the file securely and confirm access before the share expires.\n\nOpen the attached form and verify now.\n\nRegards,\nGoogle Drive"
+    },
+    {
+        "id": "secure_archive_lure",
+        "category": "Archive Malware Lure",
+        "label": "Secure Archive Lure",
+        "summary": "Password-protected archive lure using invoice language and staged delivery.",
+        "display_name": "Accounts Receivable",
+        "sender": "billing@invoice-portal-secure.com",
+        "reply_to": "payments@billing-review.net",
+        "return_path": "mailer@invoice-portal-secure.com",
+        "subject": "Payment document enclosed",
+        "attachment_name": "Invoice_Copy_03_2026.zip",
+        "body": "Dear Customer,\n\nPlease review the attached payment archive immediately. The archive password will be provided after you confirm receipt. Extract the file and verify the remittance details today.\n\nRegards,\nAccounts Receivable"
     },
     {
         "id": "delivery_scam",

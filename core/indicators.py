@@ -33,6 +33,27 @@ HIGH_RISK_ATTACHMENT_PHRASES = [
     "open the attached form",
 ]
 
+SUSPICIOUS_ATTACHMENT_KEYWORDS = [
+    "password",
+    "reset",
+    "invoice",
+    "payment",
+    "wire",
+    "secure",
+    "document",
+    "statement",
+    "remittance",
+    "review",
+]
+
+ARCHIVE_LURE_TERMS = [
+    "password protected",
+    "archive password",
+    "extract the file",
+    "unzipped",
+    "open the archive",
+]
+
 BENIGN_ATTACHMENT_EXTENSIONS = [
     ".pdf",
     ".docx",
