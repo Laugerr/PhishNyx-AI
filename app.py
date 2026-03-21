@@ -66,6 +66,20 @@ def render_indicator_items(flags: list[str], url_score: int, has_result: bool) -
             "suspicious sender" in flag_text or "domain pattern" in flag_text,
             "ALRT",
         ),
+        (
+            "Header Signals",
+            "reply-to mismatch" in flag_text
+            or "return-path mismatch" in flag_text
+            or "display name impersonation" in flag_text,
+            "ALRT",
+        ),
+        (
+            "Attachments",
+            "attachment lure" in flag_text
+            or "suspicious attachment type" in flag_text
+            or "double-extension attachment" in flag_text,
+            "ALRT",
+        ),
         ("Risky URLs", url_score > 0, "ALRT"),
     ]
 
@@ -132,6 +146,25 @@ def build_recent_scan_item(sender: str, subject: str, result: dict) -> dict:
     }
 
 
+def render_header_overview(display_name: str, reply_to: str, return_path: str, attachment_name: str) -> str:
+    entries = [
+        ("Display Name", display_name or "Not provided"),
+        ("Reply-To", reply_to or "Not provided"),
+        ("Return-Path", return_path or "Not provided"),
+        ("Attachment", attachment_name or "None"),
+    ]
+
+    html = ""
+    for label, value in entries:
+        html += (
+            '<div class="header-item">'
+            f'<span class="header-key">{label}</span>'
+            f'<span class="header-value">{value}</span>'
+            '</div>'
+        )
+    return html
+
+
 def render_recent_scans(history: list[dict]) -> str:
     if not history:
         return '<div class="status-empty">Recent analyses will appear here after you scan an email.</div>'
@@ -165,6 +198,14 @@ if "subject_input" not in st.session_state:
     st.session_state.subject_input = ""
 if "body_input" not in st.session_state:
     st.session_state.body_input = ""
+if "display_name_input" not in st.session_state:
+    st.session_state.display_name_input = ""
+if "reply_to_input" not in st.session_state:
+    st.session_state.reply_to_input = ""
+if "return_path_input" not in st.session_state:
+    st.session_state.return_path_input = ""
+if "attachment_name_input" not in st.session_state:
+    st.session_state.attachment_name_input = ""
 if "recent_scans" not in st.session_state:
     st.session_state.recent_scans = []
 
@@ -227,19 +268,53 @@ with left:
         for column, sample in zip(sample_columns, sample_emails):
             with column:
                 if st.button(sample["label"], key=f'sample_{sample["id"]}', use_container_width=True):
+                    st.session_state.display_name_input = sample.get("display_name", "")
                     st.session_state.sender_input = sample["sender"]
+                    st.session_state.reply_to_input = sample.get("reply_to", "")
+                    st.session_state.return_path_input = sample.get("return_path", "")
                     st.session_state.subject_input = sample["subject"]
+                    st.session_state.attachment_name_input = sample.get("attachment_name", "")
                     st.session_state.body_input = sample["body"]
 
-    sender = st.text_input(
-        "Sender Email",
-        placeholder="e.g. support@secure-login-paypal.com",
-        key="sender_input",
-    )
+    header_col_1, header_col_2 = st.columns(2, gap="small")
+
+    with header_col_1:
+        display_name = st.text_input(
+            "Display Name",
+            placeholder="e.g. Microsoft 365 Security",
+            key="display_name_input",
+        )
+    with header_col_2:
+        sender = st.text_input(
+            "Sender Email",
+            placeholder="e.g. support@secure-login-paypal.com",
+            key="sender_input",
+        )
+
+    routing_col_1, routing_col_2 = st.columns(2, gap="small")
+
+    with routing_col_1:
+        reply_to = st.text_input(
+            "Reply-To",
+            placeholder="e.g. response@review-center.com",
+            key="reply_to_input",
+        )
+    with routing_col_2:
+        return_path = st.text_input(
+            "Return-Path",
+            placeholder="e.g. bounce@mailer.example",
+            key="return_path_input",
+        )
+
     subject = st.text_input(
         "Email Subject",
         placeholder="e.g. Urgent: Verify Your Account Immediately",
         key="subject_input",
+    )
+    attachment_name = st.text_input(
+        "Attachment Name",
+        placeholder="e.g. Invoice_Review.html",
+        key="attachment_name_input",
     )
     body = st.text_area(
         "Email Body",
@@ -259,8 +334,24 @@ if analyze_clicked:
     if not body.strip():
         st.warning("Please enter the email body before running the analysis.")
     else:
-        result = analyze_email(sender, subject, body)
-        report_json = generate_json_report(sender, subject, result)
+        result = analyze_email(
+            sender,
+            subject,
+            body,
+            display_name=display_name,
+            reply_to=reply_to,
+            return_path=return_path,
+            attachment_name=attachment_name,
+        )
+        report_json = generate_json_report(
+            sender,
+            subject,
+            result,
+            display_name=display_name,
+            reply_to=reply_to,
+            return_path=return_path,
+            attachment_name=attachment_name,
+        )
         report_file_name = build_report_filename(result)
         scan_item = build_recent_scan_item(sender, subject, result)
         st.session_state.recent_scans = [scan_item, *st.session_state.recent_scans[:4]]
@@ -352,6 +443,15 @@ with center:
         <div class="recommend-card result-block result-explain-block">
             <div class="block-heading result-block-heading"><span class="heading-pill">WHY</span><span>Analyst Explanation</span></div>
             <div class="analysis-summary">{analyst_explanation}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        f"""
+        <div class="url-card result-block result-header-block">
+            <div class="block-heading result-block-heading"><span class="heading-pill">HDR</span><span>Header &amp; Attachment Context</span></div>
+            {render_header_overview(display_name, reply_to, return_path, attachment_name)}
         </div>
         """,
         unsafe_allow_html=True,

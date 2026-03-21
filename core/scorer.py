@@ -16,6 +16,14 @@ def calculate_score(flags, url_score=0):
             score += 15
         elif "attachment lure" in flag_lower or "attachment-themed" in flag_lower:
             score += 15
+        elif "reply-to mismatch" in flag_lower:
+            score += 15
+        elif "return-path mismatch" in flag_lower:
+            score += 15
+        elif "suspicious attachment type" in flag_lower:
+            score += 20
+        elif "double-extension attachment" in flag_lower:
+            score += 20
         elif "display-name impersonation" in flag_lower or "display name impersonation" in flag_lower:
             score += 20
         elif "brand impersonation" in flag_lower:

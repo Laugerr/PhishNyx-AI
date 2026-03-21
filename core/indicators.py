@@ -24,6 +24,21 @@ ATTACHMENT_WORDS = [
     "open the file",
 ]
 
+SUSPICIOUS_ATTACHMENT_EXTENSIONS = [
+    ".html",
+    ".htm",
+    ".zip",
+    ".rar",
+    ".exe",
+    ".iso",
+    ".js",
+    ".scr",
+    ".bat",
+    ".cmd",
+    ".xlsm",
+    ".docm",
+]
+
 SUSPICIOUS_BRANDS = [
     "paypal",
     "microsoft",

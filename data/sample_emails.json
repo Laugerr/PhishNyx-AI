@@ -2,22 +2,34 @@
     {
         "id": "paypal_lockout",
         "label": "PayPal Lockout",
+        "display_name": "PayPal Security",
         "sender": "support@secure-login-paypal.com",
+        "reply_to": "cases@secure-login-paypal.com",
+        "return_path": "mailer@secure-login-paypal.com",
         "subject": "Urgent: Verify Your Account Immediately",
+        "attachment_name": "",
         "body": "Dear Customer,\n\nYour account has been limited. Please verify your login immediately to avoid suspension.\n\nClick here now:\nhttp://192.168.1.44/login\nhttps://bit.ly/secure-payal-check\n\nRegards,\nPayPal Support"
     },
     {
         "id": "microsoft_reset",
         "label": "Microsoft Reset",
+        "display_name": "Microsoft 365 Security",
         "sender": "alerts@mail-verification-microsoft.com",
+        "reply_to": "response@account-check.net",
+        "return_path": "mailer@auth-review.net",
         "subject": "Action Required: Reset your password now",
+        "attachment_name": "Password_Reset_Form.html",
         "body": "Dear user,\n\nWe detected unusual activity on your Microsoft 365 account. Reset your password immediately to secure your mailbox.\n\nVerify account:\nhttps://tinyurl.com/m365-secure-reset\n\nSecurity Team"
     },
     {
         "id": "invoice_followup",
         "label": "Vendor Invoice",
+        "display_name": "Mila Carter",
         "sender": "accounts@vendor-ops.com",
+        "reply_to": "accounts@vendor-ops.com",
+        "return_path": "accounts@vendor-ops.com",
         "subject": "Updated invoice for March services",
+        "attachment_name": "March_Invoice.pdf",
         "body": "Hi Lauger,\n\nAttached is the updated invoice for March services. Let me know if you want us to resend the PDF through the client portal.\n\nThanks,\nMila"
     }
 ]

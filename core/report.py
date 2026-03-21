@@ -3,10 +3,22 @@ from datetime import datetime, timezone
 import re
 
 
-def build_report_payload(sender: str, subject: str, analysis_result: dict) -> dict:
+def build_report_payload(
+    sender: str,
+    subject: str,
+    analysis_result: dict,
+    display_name: str = "",
+    reply_to: str = "",
+    return_path: str = "",
+    attachment_name: str = "",
+) -> dict:
     return {
+        "display_name": display_name.strip() if display_name else "",
         "sender": sender.strip() if sender else "",
+        "reply_to": reply_to.strip() if reply_to else "",
+        "return_path": return_path.strip() if return_path else "",
         "subject": subject.strip() if subject else "",
+        "attachment_name": attachment_name.strip() if attachment_name else "",
         "score": analysis_result.get("score", 0),
         "verdict": analysis_result.get("verdict", "Unknown"),
         "flags": analysis_result.get("flags", []),
@@ -18,8 +30,24 @@ def build_report_payload(sender: str, subject: str, analysis_result: dict) -> di
     }
 
 
-def generate_json_report(sender: str, subject: str, analysis_result: dict) -> str:
-    report_payload = build_report_payload(sender, subject, analysis_result)
+def generate_json_report(
+    sender: str,
+    subject: str,
+    analysis_result: dict,
+    display_name: str = "",
+    reply_to: str = "",
+    return_path: str = "",
+    attachment_name: str = "",
+) -> str:
+    report_payload = build_report_payload(
+        sender,
+        subject,
+        analysis_result,
+        display_name=display_name,
+        reply_to=reply_to,
+        return_path=return_path,
+        attachment_name=attachment_name,
+    )
     return json.dumps(report_payload, indent=4)
 
 

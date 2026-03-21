@@ -3,6 +3,7 @@ from core.indicators import (
     CREDENTIAL_WORDS,
     PAYMENT_WORDS,
     ATTACHMENT_WORDS,
+    SUSPICIOUS_ATTACHMENT_EXTENSIONS,
     SUSPICIOUS_BRANDS,
     GENERIC_GREETINGS,
     SUSPICIOUS_DOMAINS,
@@ -20,9 +21,34 @@ def has_display_name_mismatch(sender: str) -> bool:
     return bool(display_name and email_part and display_name not in email_part)
 
 
-def analyze_email(sender, subject, body):
+def extract_email_domain(value: str) -> str:
+    if not value or "@" not in value:
+        return ""
+
+    email_value = value.strip().lower()
+    if "<" in email_value and ">" in email_value:
+        email_value = email_value.split("<", 1)[1].split(">", 1)[0].strip()
+
+    return email_value.split("@", 1)[1] if "@" in email_value else ""
+
+
+def has_double_extension(filename: str) -> bool:
+    if not filename or "." not in filename:
+        return False
+
+    parts = [part for part in filename.lower().split(".") if part]
+    return len(parts) >= 3
+
+
+def has_suspicious_attachment_type(filename: str) -> bool:
+    lowered = filename.lower().strip()
+    return any(lowered.endswith(extension) for extension in SUSPICIOUS_ATTACHMENT_EXTENSIONS)
+
+
+def analyze_email(sender, subject, body, display_name="", reply_to="", return_path="", attachment_name=""):
     text = f"{subject} {body}".lower()
     sender_lower = sender.lower().strip() if sender else ""
+    display_name_lower = display_name.lower().strip() if display_name else ""
     flags = []
     details = []
 
@@ -57,6 +83,33 @@ def analyze_email(sender, subject, body):
     if any(brand in text for brand in SUSPICIOUS_BRANDS) and any(domain in sender_lower for domain in SUSPICIOUS_DOMAINS):
         flags.append("Brand impersonation cues detected")
         details.append("Brand references combined with suspicious sender patterns can indicate impersonation attempts.")
+
+    if display_name_lower and any(brand in display_name_lower for brand in SUSPICIOUS_BRANDS) and any(
+        domain in sender_lower for domain in SUSPICIOUS_DOMAINS
+    ):
+        flags.append("Brand impersonation cues detected")
+        details.append("The display name references a trusted brand while the sender domain appears suspicious.")
+
+    sender_domain = extract_email_domain(sender)
+    reply_to_domain = extract_email_domain(reply_to)
+    return_path_domain = extract_email_domain(return_path)
+
+    if sender_domain and reply_to_domain and sender_domain != reply_to_domain:
+        flags.append("Reply-To mismatch detected")
+        details.append("The Reply-To domain does not match the sender domain, which can redirect responses to an attacker-controlled mailbox.")
+
+    if sender_domain and return_path_domain and sender_domain != return_path_domain:
+        flags.append("Return-Path mismatch detected")
+        details.append("A mismatched Return-Path can indicate spoofing or infrastructure that differs from the visible sender identity.")
+
+    if attachment_name:
+        if has_suspicious_attachment_type(attachment_name):
+            flags.append("Suspicious attachment type detected")
+            details.append("The attachment extension is commonly abused in phishing and malware delivery campaigns.")
+
+        if has_double_extension(attachment_name):
+            flags.append("Double-extension attachment naming detected")
+            details.append("Multiple file extensions can be used to disguise the true nature of an attachment.")
 
     url_result = analyze_urls(body)
     if url_result["flags"]:
