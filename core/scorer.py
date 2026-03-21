@@ -20,6 +20,12 @@ def calculate_score(flags, url_score=0):
             score += 15
         elif "return-path mismatch" in flag_lower:
             score += 15
+        elif "free-mail reply-to" in flag_lower or "free mail reply-to" in flag_lower:
+            score += 15
+        elif "internal display-name mismatch" in flag_lower:
+            score += 15
+        elif "trusted brand display name on unrelated domain" in flag_lower:
+            score += 20
         elif "suspicious attachment type" in flag_lower:
             score += 20
         elif "double-extension attachment" in flag_lower:

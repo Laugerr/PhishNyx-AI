@@ -88,6 +88,22 @@ SUSPICIOUS_BRANDS = [
     "office 365",
 ]
 
+FREE_MAIL_DOMAINS = [
+    "gmail.com",
+    "outlook.com",
+    "hotmail.com",
+    "yahoo.com",
+    "protonmail.com",
+    "aol.com",
+    "icloud.com",
+]
+
+INTERNAL_DOMAINS = [
+    "company.local",
+    "internal.local",
+    "corp.local",
+]
+
 GENERIC_GREETINGS = [
     "dear user", "dear customer", "dear client"
 ]

@@ -9,6 +9,8 @@ from core.indicators import (
     BENIGN_ATTACHMENT_EXTENSIONS,
     SUSPICIOUS_ATTACHMENT_EXTENSIONS,
     SUSPICIOUS_BRANDS,
+    FREE_MAIL_DOMAINS,
+    INTERNAL_DOMAINS,
     GENERIC_GREETINGS,
     SUSPICIOUS_DOMAINS,
 )
@@ -45,6 +47,27 @@ def extract_email_domain(value: str) -> str:
         email_value = email_value.split("<", 1)[1].split(">", 1)[0].strip()
 
     return email_value.split("@", 1)[1] if "@" in email_value else ""
+
+
+def is_free_mail_domain(domain: str) -> bool:
+    return domain in FREE_MAIL_DOMAINS
+
+
+def is_internal_domain(domain: str) -> bool:
+    return domain in INTERNAL_DOMAINS or domain.endswith(".local")
+
+
+def has_trusted_brand_display_name(display_name: str) -> bool:
+    lowered = display_name.lower().strip()
+    return any(brand in lowered for brand in SUSPICIOUS_BRANDS)
+
+
+def is_unrelated_brand_domain(domain: str, display_name: str) -> bool:
+    if not domain or not has_trusted_brand_display_name(display_name):
+        return False
+
+    lowered_domain = domain.lower()
+    return not any(brand.replace(" ", "") in lowered_domain or brand in lowered_domain for brand in SUSPICIOUS_BRANDS)
 
 
 def has_double_extension(filename: str) -> bool:
@@ -155,6 +178,10 @@ def analyze_email(sender, subject, body, display_name="", reply_to="", return_pa
     reply_to_domain = extract_email_domain(reply_to)
     return_path_domain = extract_email_domain(return_path)
 
+    if display_name_lower and is_internal_domain(sender_domain) and has_display_name_mismatch(display_name, sender):
+        flags.append("Internal display-name mismatch detected")
+        details.append("An internal-looking sender uses a display name that does not align with the visible mailbox identity.")
+
     if sender_domain and reply_to_domain and sender_domain != reply_to_domain and suspicious_sender_pattern:
         flags.append("Reply-To mismatch detected")
         details.append("The Reply-To domain does not match the sender domain, which can redirect responses to an attacker-controlled mailbox.")
@@ -162,6 +189,14 @@ def analyze_email(sender, subject, body, display_name="", reply_to="", return_pa
     if sender_domain and return_path_domain and sender_domain != return_path_domain and suspicious_sender_pattern:
         flags.append("Return-Path mismatch detected")
         details.append("A mismatched Return-Path can indicate spoofing or infrastructure that differs from the visible sender identity.")
+
+    if reply_to_domain and is_free_mail_domain(reply_to_domain) and sender_domain and sender_domain != reply_to_domain:
+        flags.append("Free-mail Reply-To detected")
+        details.append("A corporate-looking email that routes replies to a free-mail provider can indicate impersonation or reply-hijacking behavior.")
+
+    if display_name_lower and sender_domain and is_unrelated_brand_domain(sender_domain, display_name):
+        flags.append("Trusted brand display name on unrelated domain detected")
+        details.append("The display name references a trusted brand, but the sender domain does not align with that brand identity.")
 
     if attachment_name:
         if has_suspicious_attachment_type(attachment_name):

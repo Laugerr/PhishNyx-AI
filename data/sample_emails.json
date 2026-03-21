@@ -45,7 +45,7 @@
         "summary": "Fake document-sharing alert with external reply path and suspicious file name.",
         "display_name": "Google Drive Notifications",
         "sender": "notify@secure-login-google.net",
-        "reply_to": "docs.review.center@external-mail.net",
+        "reply_to": "docs.review.center@gmail.com",
         "return_path": "bounce@drive-review-alerts.net",
         "subject": "A document has been shared with you",
         "attachment_name": "Shared_Document_View.html",
@@ -102,5 +102,18 @@
         "subject": "Planned VPN maintenance on Friday",
         "attachment_name": "",
         "body": "Hi team,\n\nWe will perform scheduled VPN maintenance on Friday from 21:00 to 22:00 UTC. You may briefly lose access during the maintenance window. If you have not enrolled in MFA yet, please use the internal portal next week.\n\nThanks,\nIT Operations"
+    },
+    {
+        "id": "brand_spoof_notice",
+        "category": "Header Spoofing",
+        "label": "Brand Spoof Notice",
+        "summary": "Trusted-brand display name delivered from an unrelated domain with reply redirection.",
+        "display_name": "Amazon Billing Support",
+        "sender": "helpdesk@merchant-review-center.net",
+        "reply_to": "amazoncaseupdates@yahoo.com",
+        "return_path": "mailer@merchant-review-center.net",
+        "subject": "Billing issue requires immediate review",
+        "attachment_name": "",
+        "body": "Dear Customer,\n\nWe detected a billing issue linked to your Amazon account. Review your payment details immediately to avoid service interruption.\n\nReply if you need assistance.\n\nAmazon Billing"
     }
 ]
