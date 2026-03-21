@@ -997,6 +997,111 @@ header[data-testid="stHeader"] {
     line-height: 1.35;
 }
 
+.triage-overview {
+    margin-bottom: 0.6rem;
+}
+
+.triage-item {
+    padding: 0.5rem 0.1rem;
+    border-bottom: 1px dotted rgba(177, 190, 244, 0.24);
+}
+
+.triage-item:last-child {
+    border-bottom: 0;
+    padding-bottom: 0.05rem;
+}
+
+.triage-top,
+.severity-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.triage-top {
+    justify-content: space-between;
+}
+
+.triage-flag {
+    color: #eef4ff;
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.triage-meta {
+    margin-top: 0.18rem;
+    color: #9fb1d8;
+    font-size: 0.75rem;
+    line-height: 1.45;
+}
+
+.triage-severity,
+.severity-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 3.55rem;
+    padding: 0.18rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.03rem;
+}
+
+.triage-low .triage-severity,
+.severity-low .severity-badge {
+    color: #b9f6d7;
+    background: rgba(74, 145, 112, 0.2);
+    border: 1px solid rgba(115, 214, 167, 0.22);
+}
+
+.triage-medium .triage-severity,
+.severity-medium .severity-badge {
+    color: #ffd992;
+    background: rgba(158, 111, 43, 0.24);
+    border: 1px solid rgba(255, 194, 107, 0.22);
+}
+
+.triage-high .triage-severity,
+.severity-high .severity-badge {
+    color: #ffba9a;
+    background: rgba(138, 63, 52, 0.24);
+    border: 1px solid rgba(255, 149, 123, 0.22);
+}
+
+.triage-critical .triage-severity,
+.severity-critical .severity-badge {
+    color: #ffd3cf;
+    background: rgba(162, 53, 64, 0.34);
+    border: 1px solid rgba(255, 128, 121, 0.28);
+}
+
+.severity-row {
+    justify-content: space-between;
+    padding: 0.48rem 0.1rem;
+    border-bottom: 1px dotted rgba(177, 190, 244, 0.24);
+}
+
+.severity-row:last-child {
+    border-bottom: 0;
+}
+
+.severity-label {
+    color: #edf5ff;
+    font-size: 0.82rem;
+    font-weight: 800;
+    flex: 1;
+}
+
+.severity-count {
+    color: #9dcfff;
+    font-size: 0.78rem;
+    font-weight: 900;
+    min-width: 1.1rem;
+    text-align: right;
+}
+
 div[data-baseweb="input"] > div,
 div[data-baseweb="textarea"] > div {
     background: linear-gradient(180deg, rgba(46, 55, 106, 0.94), rgba(31, 37, 82, 0.94)) !important;

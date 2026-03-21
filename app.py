@@ -33,7 +33,7 @@ def load_sample_emails() -> list[dict]:
 
 
 def sample_option_label(sample: dict) -> str:
-    return f'{sample.get("category", "Scenario")} · {sample["label"]}'
+    return f'{sample.get("category", "Scenario")} - {sample["label"]}'
 
 
 def render_flag_items(flags: list[str]) -> str:
@@ -164,7 +164,7 @@ def render_header_overview(display_name: str, reply_to: str, return_path: str, a
             '<div class="header-item">'
             f'<span class="header-key">{label}</span>'
             f'<span class="header-value">{value}</span>'
-            '</div>'
+            "</div>"
         )
     return html
 
@@ -181,7 +181,41 @@ def render_recent_scans(history: list[dict]) -> str:
             f'<span class="history-score">{item["score"]}/100</span></div>'
             f'<div class="history-subject">{item["subject"]}</div>'
             f'<div class="history-meta">{item["sender"]} &bull; {item["timestamp"]}</div>'
-            '</div>'
+            "</div>"
+        )
+    return html
+
+
+def render_triage_findings(findings: list[dict]) -> str:
+    if not findings:
+        return '<div class="status-empty">Priority findings will appear here after an analysis runs.</div>'
+
+    html = ""
+    for finding in findings:
+        severity = finding.get("severity", "low")
+        html += (
+            f'<div class="triage-item triage-{severity}">'
+            f'<div class="triage-top"><span class="triage-flag">{finding["flag"]}</span>'
+            f'<span class="triage-severity">{severity.upper()}</span></div>'
+            f'<div class="triage-meta">{finding["why"]}</div>'
+            "</div>"
+        )
+    return html
+
+
+def render_severity_breakdown(breakdown: list[dict]) -> str:
+    if not breakdown:
+        return '<div class="status-empty">Category severity will appear here after an analysis runs.</div>'
+
+    html = ""
+    for item in breakdown:
+        severity = item.get("severity", "low")
+        html += (
+            f'<div class="severity-row severity-{severity}">'
+            f'<span class="severity-label">{item["label"]}</span>'
+            f'<span class="severity-badge">{severity.upper()}</span>'
+            f'<span class="severity-count">{item["count"]}</span>'
+            "</div>"
         )
     return html
 
@@ -396,6 +430,11 @@ summary = result.get("summary", "No summary available.") if result else (
 analyst_explanation = build_analyst_explanation(result)
 urls_found = result.get("urls_found", []) if result else []
 url_score = result.get("url_score", 0) if result else 0
+triage_findings = result.get("triage_findings", []) if result else []
+severity_breakdown = result.get("severity_breakdown", []) if result else []
+triage_overview = result.get("triage_overview", "Run the analyzer to generate category-level triage priorities.") if result else (
+    "Run the analyzer to generate category-level triage priorities."
+)
 sender_display = sender.strip() if sender.strip() else "Not provided"
 shield_class, shield_label = shield_state(score, verdict)
 
@@ -475,24 +514,55 @@ with center:
         """,
         unsafe_allow_html=True,
     )
-    st.markdown(
-        f"""
-        <div class="url-card result-block result-header-block">
-            <div class="block-heading result-block-heading"><span class="heading-pill">HDR</span><span>Header &amp; Attachment Context</span></div>
-            {render_header_overview(display_name, reply_to, return_path, attachment_name)}
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        f"""
-        <div class="url-card result-block result-url-block">
-            <div class="block-heading result-block-heading"><span class="heading-pill">URL</span><span>Extracted URLs</span></div>
-            {render_url_items(urls_found)}
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+
+    triage_col_1, triage_col_2 = st.columns(2, gap="small")
+
+    with triage_col_1:
+        st.markdown(
+            f"""
+            <div class="recommend-card result-block result-triage-block">
+                <div class="block-heading result-block-heading"><span class="heading-pill">TRI</span><span>Triage Priorities</span></div>
+                <div class="analysis-summary triage-overview">{triage_overview}</div>
+                {render_triage_findings(triage_findings)}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with triage_col_2:
+        st.markdown(
+            f"""
+            <div class="url-card result-block result-severity-block">
+                <div class="block-heading result-block-heading"><span class="heading-pill">SEV</span><span>Severity by Category</span></div>
+                {render_severity_breakdown(severity_breakdown)}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    context_col_1, context_col_2 = st.columns(2, gap="small")
+
+    with context_col_1:
+        st.markdown(
+            f"""
+            <div class="url-card result-block result-header-block">
+                <div class="block-heading result-block-heading"><span class="heading-pill">HDR</span><span>Header &amp; Attachment Context</span></div>
+                {render_header_overview(display_name, reply_to, return_path, attachment_name)}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with context_col_2:
+        st.markdown(
+            f"""
+            <div class="url-card result-block result-url-block">
+                <div class="block-heading result-block-heading"><span class="heading-pill">URL</span><span>Extracted URLs</span></div>
+                {render_url_items(urls_found)}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     st.markdown(
         f"""

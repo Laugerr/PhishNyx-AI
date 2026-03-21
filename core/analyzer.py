@@ -18,6 +18,9 @@ from core.scorer import calculate_score, get_verdict
 from core.url_checks import analyze_urls
 
 
+SEVERITY_ORDER = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+
+
 def has_display_name_mismatch(display_name: str, sender: str) -> bool:
     if not display_name or not sender or "@" not in sender:
         return False
@@ -120,6 +123,150 @@ def has_payment_pressure(text: str) -> bool:
         "confidential wire",
     ]
     return suspicious_context or any(term in text for term in payment_pressure_terms)
+
+
+def build_triage_finding(flag: str) -> dict:
+    flag_lower = flag.lower()
+
+    if "credential" in flag_lower or "verification request" in flag_lower:
+        return {
+            "flag": flag,
+            "category": "content",
+            "severity": "critical",
+            "priority": 95,
+            "why": "Credential theft language is one of the clearest indicators of phishing intent.",
+        }
+    if "raw ip" in flag_lower or "ip-based url" in flag_lower:
+        return {
+            "flag": flag,
+            "category": "urls",
+            "severity": "critical",
+            "priority": 92,
+            "why": "Direct IP links bypass normal brand and domain trust signals and are high-risk in email.",
+        }
+    if "suspicious attachment type" in flag_lower or "double-extension attachment" in flag_lower:
+        return {
+            "flag": flag,
+            "category": "attachments",
+            "severity": "high",
+            "priority": 88,
+            "why": "Executable or disguised attachments are commonly used to deliver malware or credential harvesters.",
+        }
+    if "reply-to mismatch" in flag_lower or "return-path mismatch" in flag_lower:
+        return {
+            "flag": flag,
+            "category": "headers",
+            "severity": "high",
+            "priority": 84,
+            "why": "Header routing mismatches can indicate spoofing or attacker-controlled reply paths.",
+        }
+    if "trusted brand display name" in flag_lower or "display-name impersonation" in flag_lower:
+        return {
+            "flag": flag,
+            "category": "headers",
+            "severity": "high",
+            "priority": 82,
+            "why": "Sender identity inconsistencies often signal impersonation meant to borrow trust.",
+        }
+    if "brand impersonation" in flag_lower or "suspicious sender" in flag_lower:
+        return {
+            "flag": flag,
+            "category": "sender",
+            "severity": "high",
+            "priority": 80,
+            "why": "Brand and sender anomalies often indicate a spoofed origin or impersonation attempt.",
+        }
+    if "shortened url" in flag_lower or "suspicious url keyword" in flag_lower:
+        return {
+            "flag": flag,
+            "category": "urls",
+            "severity": "medium",
+            "priority": 70,
+            "why": "Obfuscated or phishing-themed links increase the chance of redirecting users to a malicious site.",
+        }
+    if "attachment lure" in flag_lower or "archive-style attachment lure" in flag_lower:
+        return {
+            "flag": flag,
+            "category": "attachments",
+            "severity": "medium",
+            "priority": 68,
+            "why": "Social engineering around opening attachments is a common path to malware delivery.",
+        }
+    if "urgent language" in flag_lower or "payment" in flag_lower or "invoice" in flag_lower:
+        return {
+            "flag": flag,
+            "category": "content",
+            "severity": "medium",
+            "priority": 65,
+            "why": "Pressure tactics are used to shorten review time and push risky user actions.",
+        }
+    if "multiple urls" in flag_lower:
+        return {
+            "flag": flag,
+            "category": "urls",
+            "severity": "medium",
+            "priority": 60,
+            "why": "Link-heavy emails can be used for link spraying or to create urgency through multiple destinations.",
+        }
+    if "generic greeting" in flag_lower:
+        return {
+            "flag": flag,
+            "category": "content",
+            "severity": "low",
+            "priority": 40,
+            "why": "Generic greetings are weaker signals, but they are common in mass-targeted phishing emails.",
+        }
+
+    return {
+        "flag": flag,
+        "category": "content",
+        "severity": "low",
+        "priority": 35,
+        "why": "This finding contributes to analyst caution under the current phishing rule set.",
+    }
+
+
+def build_severity_breakdown(findings: list[dict]) -> list[dict]:
+    labels = {
+        "content": "Content",
+        "sender": "Sender",
+        "headers": "Headers",
+        "attachments": "Attachments",
+        "urls": "URLs",
+    }
+    grouped = {
+        key: {"category": key, "label": label, "count": 0, "severity": "low"}
+        for key, label in labels.items()
+    }
+
+    for finding in findings:
+        category = finding["category"]
+        entry = grouped[category]
+        entry["count"] += 1
+        if SEVERITY_ORDER[finding["severity"]] > SEVERITY_ORDER[entry["severity"]]:
+            entry["severity"] = finding["severity"]
+
+    return [grouped[key] for key in labels]
+
+
+def build_triage_overview(findings: list[dict], verdict: str) -> str:
+    if not findings:
+        return (
+            "No categories escalated beyond low concern. Continue standard verification hygiene, "
+            "but the current rules did not identify strong triage priorities."
+        )
+
+    highest = max(findings, key=lambda item: (SEVERITY_ORDER[item["severity"]], item["priority"]))
+    categories = []
+    for finding in findings:
+        if finding["category"] not in categories:
+            categories.append(finding["category"])
+
+    lead_categories = ", ".join(category.capitalize() for category in categories[:2])
+    return (
+        f"{verdict} triage was driven primarily by {lead_categories} signals. "
+        f"Top concern: {highest['flag']}"
+    )
 
 
 def analyze_email(sender, subject, body, display_name="", reply_to="", return_path="", attachment_name=""):
@@ -228,6 +375,13 @@ def analyze_email(sender, subject, body, display_name="", reply_to="", return_pa
 
     score = calculate_score(flags, url_score=url_result["score"])
     verdict = get_verdict(score)
+    triage_findings = sorted(
+        [build_triage_finding(flag) for flag in flags],
+        key=lambda item: (item["priority"], SEVERITY_ORDER[item["severity"]]),
+        reverse=True,
+    )
+    severity_breakdown = build_severity_breakdown(triage_findings)
+    triage_overview = build_triage_overview(triage_findings, verdict)
 
     if score >= 50:
         recommendation = (
@@ -261,4 +415,7 @@ def analyze_email(sender, subject, body, display_name="", reply_to="", return_pa
         "summary": summary,
         "urls_found": url_result["urls"],
         "url_score": url_result["score"],
+        "triage_findings": triage_findings[:3],
+        "severity_breakdown": severity_breakdown,
+        "triage_overview": triage_overview,
     }

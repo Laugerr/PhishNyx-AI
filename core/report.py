@@ -26,6 +26,9 @@ def build_report_payload(
         "recommendation": analysis_result.get("recommendation", ""),
         "urls_found": analysis_result.get("urls_found", []),
         "url_score": analysis_result.get("url_score", 0),
+        "triage_findings": analysis_result.get("triage_findings", []),
+        "severity_breakdown": analysis_result.get("severity_breakdown", []),
+        "triage_overview": analysis_result.get("triage_overview", ""),
         "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     }
 
