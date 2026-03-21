@@ -213,7 +213,11 @@ if "attachment_name_input" not in st.session_state:
 if "recent_scans" not in st.session_state:
     st.session_state.recent_scans = []
 if "selected_sample_id" not in st.session_state:
-    st.session_state.selected_sample_id = ""
+    st.session_state.selected_sample_id = sample_emails[0]["id"] if sample_emails else None
+
+valid_sample_ids = {sample["id"] for sample in sample_emails}
+if sample_emails and st.session_state.selected_sample_id not in valid_sample_ids:
+    st.session_state.selected_sample_id = sample_emails[0]["id"]
 
 st.markdown(
     """

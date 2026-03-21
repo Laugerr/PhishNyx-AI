@@ -3,6 +3,8 @@ from core.indicators import (
     CREDENTIAL_WORDS,
     PAYMENT_WORDS,
     ATTACHMENT_WORDS,
+    HIGH_RISK_ATTACHMENT_PHRASES,
+    BENIGN_ATTACHMENT_EXTENSIONS,
     SUSPICIOUS_ATTACHMENT_EXTENSIONS,
     SUSPICIOUS_BRANDS,
     GENERIC_GREETINGS,
@@ -12,13 +14,24 @@ from core.scorer import calculate_score, get_verdict
 from core.url_checks import analyze_urls
 
 
-def has_display_name_mismatch(sender: str) -> bool:
-    if not sender or "<" not in sender or ">" not in sender:
+def has_display_name_mismatch(display_name: str, sender: str) -> bool:
+    if not display_name or not sender or "@" not in sender:
         return False
 
-    display_name = sender.split("<", 1)[0].strip().lower()
-    email_part = sender.split("<", 1)[1].split(">", 1)[0].strip().lower()
-    return bool(display_name and email_part and display_name not in email_part)
+    display_tokens = [
+        "".join(ch for ch in token.lower() if ch.isalnum())
+        for token in display_name.split()
+    ]
+    display_tokens = [token for token in display_tokens if token]
+    normalized_name = "".join(ch for ch in display_name.lower() if ch.isalnum())
+    local_part = sender.lower().split("@", 1)[0]
+    normalized_local = "".join(ch for ch in local_part if ch.isalnum())
+
+    if not normalized_name or not normalized_local:
+        return False
+
+    overlap = any(token in normalized_local for token in display_tokens)
+    return normalized_name not in normalized_local and not overlap
 
 
 def extract_email_domain(value: str) -> str:
@@ -45,6 +58,34 @@ def has_suspicious_attachment_type(filename: str) -> bool:
     return any(lowered.endswith(extension) for extension in SUSPICIOUS_ATTACHMENT_EXTENSIONS)
 
 
+def has_benign_attachment_type(filename: str) -> bool:
+    lowered = filename.lower().strip()
+    return any(lowered.endswith(extension) for extension in BENIGN_ATTACHMENT_EXTENSIONS)
+
+
+def has_high_risk_attachment_phrase(text: str) -> bool:
+    return any(phrase in text for phrase in HIGH_RISK_ATTACHMENT_PHRASES)
+
+
+def has_payment_pressure(text: str) -> bool:
+    payment_hit = any(word in text for word in PAYMENT_WORDS)
+    if not payment_hit:
+        return False
+
+    suspicious_context = any(word in text for word in URGENT_WORDS) or any(
+        word in text for word in CREDENTIAL_WORDS
+    )
+    payment_pressure_terms = [
+        "process today",
+        "complete the transfer",
+        "payment overdue",
+        "send confirmation",
+        "beneficiary details",
+        "confidential wire",
+    ]
+    return suspicious_context or any(term in text for term in payment_pressure_terms)
+
+
 def analyze_email(sender, subject, body, display_name="", reply_to="", return_path="", attachment_name=""):
     text = f"{subject} {body}".lower()
     sender_lower = sender.lower().strip() if sender else ""
@@ -68,25 +109,32 @@ def analyze_email(sender, subject, body, display_name="", reply_to="", return_pa
         flags.append("Suspicious sender domain pattern detected")
         details.append("The sender address contains domain patterns often used in impersonation or phishing.")
 
-    if any(word in text for word in PAYMENT_WORDS):
+    if has_payment_pressure(text):
         flags.append("Payment or invoice pressure language detected")
         details.append("Unexpected payment or invoice language is often used in business email compromise and billing scams.")
 
-    if any(word in text for word in ATTACHMENT_WORDS):
+    attachment_lure_detected = any(word in text for word in ATTACHMENT_WORDS)
+    suspicious_attachment_context = (
+        has_high_risk_attachment_phrase(text)
+        or has_suspicious_attachment_type(attachment_name)
+        or has_double_extension(attachment_name)
+        or any(word in text for word in URGENT_WORDS)
+        or any(word in text for word in CREDENTIAL_WORDS)
+    )
+    if attachment_lure_detected and suspicious_attachment_context:
         flags.append("Attachment lure language detected")
         details.append("Phishing emails frequently pressure recipients to open attached files or documents.")
 
-    if has_display_name_mismatch(sender):
+    if has_display_name_mismatch(display_name, sender):
         flags.append("Display name impersonation pattern detected")
         details.append("The sender display name does not align cleanly with the underlying email address.")
 
-    if any(brand in text for brand in SUSPICIOUS_BRANDS) and any(domain in sender_lower for domain in SUSPICIOUS_DOMAINS):
+    suspicious_sender_pattern = any(domain in sender_lower for domain in SUSPICIOUS_DOMAINS)
+    if any(brand in text for brand in SUSPICIOUS_BRANDS) and suspicious_sender_pattern:
         flags.append("Brand impersonation cues detected")
         details.append("Brand references combined with suspicious sender patterns can indicate impersonation attempts.")
 
-    if display_name_lower and any(brand in display_name_lower for brand in SUSPICIOUS_BRANDS) and any(
-        domain in sender_lower for domain in SUSPICIOUS_DOMAINS
-    ):
+    if display_name_lower and any(brand in display_name_lower for brand in SUSPICIOUS_BRANDS) and suspicious_sender_pattern:
         flags.append("Brand impersonation cues detected")
         details.append("The display name references a trusted brand while the sender domain appears suspicious.")
 
@@ -94,11 +142,11 @@ def analyze_email(sender, subject, body, display_name="", reply_to="", return_pa
     reply_to_domain = extract_email_domain(reply_to)
     return_path_domain = extract_email_domain(return_path)
 
-    if sender_domain and reply_to_domain and sender_domain != reply_to_domain:
+    if sender_domain and reply_to_domain and sender_domain != reply_to_domain and suspicious_sender_pattern:
         flags.append("Reply-To mismatch detected")
         details.append("The Reply-To domain does not match the sender domain, which can redirect responses to an attacker-controlled mailbox.")
 
-    if sender_domain and return_path_domain and sender_domain != return_path_domain:
+    if sender_domain and return_path_domain and sender_domain != return_path_domain and suspicious_sender_pattern:
         flags.append("Return-Path mismatch detected")
         details.append("A mismatched Return-Path can indicate spoofing or infrastructure that differs from the visible sender identity.")
 
@@ -111,10 +159,16 @@ def analyze_email(sender, subject, body, display_name="", reply_to="", return_pa
             flags.append("Double-extension attachment naming detected")
             details.append("Multiple file extensions can be used to disguise the true nature of an attachment.")
 
+        if has_benign_attachment_type(attachment_name) and not suspicious_attachment_context:
+            details.append("The attachment type appears common for normal business communication and did not independently raise the score.")
+
     url_result = analyze_urls(body)
     if url_result["flags"]:
         flags.extend(url_result["flags"])
         details.extend(url_result["details"])
+
+    flags = list(dict.fromkeys(flags))
+    details = list(dict.fromkeys(details))
 
     score = calculate_score(flags, url_score=url_result["score"])
     verdict = get_verdict(score)

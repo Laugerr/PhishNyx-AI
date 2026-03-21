@@ -24,6 +24,24 @@ ATTACHMENT_WORDS = [
     "open the file",
 ]
 
+HIGH_RISK_ATTACHMENT_PHRASES = [
+    "enable content",
+    "enable editing",
+    "macro-enabled",
+    "secure document attached",
+    "review the attached html file",
+    "open the attached form",
+]
+
+BENIGN_ATTACHMENT_EXTENSIONS = [
+    ".pdf",
+    ".docx",
+    ".xlsx",
+    ".pptx",
+    ".txt",
+    ".csv",
+]
+
 SUSPICIOUS_ATTACHMENT_EXTENSIONS = [
     ".html",
     ".htm",
