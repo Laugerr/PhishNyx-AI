@@ -1,7 +1,9 @@
 [
     {
         "id": "paypal_lockout",
+        "category": "Credential Phishing",
         "label": "PayPal Lockout",
+        "summary": "Credential lure with urgent account-verification language and risky URLs.",
         "display_name": "PayPal Security",
         "sender": "support@secure-login-paypal.com",
         "reply_to": "cases@secure-login-paypal.com",
@@ -12,7 +14,9 @@
     },
     {
         "id": "microsoft_reset",
+        "category": "Credential Phishing",
         "label": "Microsoft Reset",
+        "summary": "Mailbox-security reset phish with sender mismatch and malicious attachment lure.",
         "display_name": "Microsoft 365 Security",
         "sender": "alerts@mail-verification-microsoft.com",
         "reply_to": "response@account-check.net",
@@ -22,8 +26,49 @@
         "body": "Dear user,\n\nWe detected unusual activity on your Microsoft 365 account. Reset your password immediately to secure your mailbox.\n\nVerify account:\nhttps://tinyurl.com/m365-secure-reset\n\nSecurity Team"
     },
     {
+        "id": "ceo_wire_fraud",
+        "category": "Business Email Compromise",
+        "label": "CEO Wire Request",
+        "summary": "Executive impersonation asking finance to complete an urgent bank transfer.",
+        "display_name": "Daniel Mercer, CEO",
+        "sender": "d.mercer@executive-payments.net",
+        "reply_to": "daniel.mercer.ceo@protonmail.com",
+        "return_path": "mailer@executive-payments.net",
+        "subject": "Need this wire sent in the next 30 minutes",
+        "attachment_name": "",
+        "body": "Hi,\n\nI am in meetings and need you to process a confidential wire transfer immediately. Do not call me right now. Send confirmation once the payment has been completed.\n\nBeneficiary details will follow after you reply.\n\nDaniel"
+    },
+    {
+        "id": "shared_drive_lure",
+        "category": "Document Share Phishing",
+        "label": "Shared Drive Lure",
+        "summary": "Fake document-sharing alert with external reply path and suspicious file name.",
+        "display_name": "Google Drive Notifications",
+        "sender": "notify@secure-login-google.net",
+        "reply_to": "docs.review.center@external-mail.net",
+        "return_path": "bounce@drive-review-alerts.net",
+        "subject": "A document has been shared with you",
+        "attachment_name": "Shared_Document_View.html",
+        "body": "Dear user,\n\nA confidential HR document has been shared with you. Open the attachment to review the file securely and confirm access before the share expires.\n\nRegards,\nGoogle Drive"
+    },
+    {
+        "id": "delivery_scam",
+        "category": "Delivery Scam",
+        "label": "Delivery Exception",
+        "summary": "Package-delivery phishing message with urgency and a shortened tracking link.",
+        "display_name": "Delivery Service",
+        "sender": "tracking@account-update-delivery.com",
+        "reply_to": "helpdesk@parcel-case.net",
+        "return_path": "mailer@delivery-status-center.net",
+        "subject": "Final notice: delivery failed today",
+        "attachment_name": "",
+        "body": "Dear Customer,\n\nYour parcel could not be delivered today due to an address verification issue. Confirm delivery details immediately to avoid return to sender.\n\nTrack now:\nhttps://bit.ly/parcel-failed-check\n\nDelivery Desk"
+    },
+    {
         "id": "invoice_followup",
+        "category": "Benign Finance",
         "label": "Vendor Invoice",
+        "summary": "Legitimate vendor follow-up with normal billing context and no risky links.",
         "display_name": "Mila Carter",
         "sender": "accounts@vendor-ops.com",
         "reply_to": "accounts@vendor-ops.com",
@@ -31,5 +76,18 @@
         "subject": "Updated invoice for March services",
         "attachment_name": "March_Invoice.pdf",
         "body": "Hi Lauger,\n\nAttached is the updated invoice for March services. Let me know if you want us to resend the PDF through the client portal.\n\nThanks,\nMila"
+    },
+    {
+        "id": "internal_it_notice",
+        "category": "Benign Internal",
+        "label": "Internal IT Notice",
+        "summary": "Legitimate internal notice about scheduled maintenance and MFA enrollment.",
+        "display_name": "IT Operations",
+        "sender": "it-ops@company.local",
+        "reply_to": "it-ops@company.local",
+        "return_path": "it-ops@company.local",
+        "subject": "Planned VPN maintenance on Friday",
+        "attachment_name": "",
+        "body": "Hi team,\n\nWe will perform scheduled VPN maintenance on Friday from 21:00 to 22:00 UTC. You may briefly lose access during the maintenance window. If you have not enrolled in MFA yet, please use the internal portal next week.\n\nThanks,\nIT Operations"
     }
 ]

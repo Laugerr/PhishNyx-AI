@@ -32,6 +32,10 @@ def load_sample_emails() -> list[dict]:
         return json.load(sample_file)
 
 
+def sample_option_label(sample: dict) -> str:
+    return f'{sample.get("category", "Scenario")} · {sample["label"]}'
+
+
 def render_flag_items(flags: list[str]) -> str:
     if not flags:
         return '<div class="status-empty">No red flags triggered by the current rule set.</div>'
@@ -208,6 +212,8 @@ if "attachment_name_input" not in st.session_state:
     st.session_state.attachment_name_input = ""
 if "recent_scans" not in st.session_state:
     st.session_state.recent_scans = []
+if "selected_sample_id" not in st.session_state:
+    st.session_state.selected_sample_id = ""
 
 st.markdown(
     """
@@ -264,17 +270,35 @@ with left:
             '<div class="sample-strip-title">Sample Scenarios</div>',
             unsafe_allow_html=True,
         )
-        sample_columns = st.columns(len(sample_emails), gap="small")
-        for column, sample in zip(sample_columns, sample_emails):
-            with column:
-                if st.button(sample["label"], key=f'sample_{sample["id"]}', use_container_width=True):
-                    st.session_state.display_name_input = sample.get("display_name", "")
-                    st.session_state.sender_input = sample["sender"]
-                    st.session_state.reply_to_input = sample.get("reply_to", "")
-                    st.session_state.return_path_input = sample.get("return_path", "")
-                    st.session_state.subject_input = sample["subject"]
-                    st.session_state.attachment_name_input = sample.get("attachment_name", "")
-                    st.session_state.body_input = sample["body"]
+        sample_lookup = {sample["id"]: sample for sample in sample_emails}
+        default_sample_index = 0
+        if st.session_state.selected_sample_id in sample_lookup:
+            default_sample_index = next(
+                index
+                for index, sample in enumerate(sample_emails)
+                if sample["id"] == st.session_state.selected_sample_id
+            )
+
+        selected_sample_id = st.selectbox(
+            "Choose a sample scenario",
+            options=[sample["id"] for sample in sample_emails],
+            index=default_sample_index,
+            format_func=lambda sample_id: sample_option_label(sample_lookup[sample_id]),
+            key="selected_sample_id",
+        )
+        selected_sample = sample_lookup[selected_sample_id]
+        st.markdown(
+            f'<div class="sample-summary">{selected_sample.get("summary", "")}</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button("Load Selected Sample", key="load_selected_sample", use_container_width=True):
+            st.session_state.display_name_input = selected_sample.get("display_name", "")
+            st.session_state.sender_input = selected_sample["sender"]
+            st.session_state.reply_to_input = selected_sample.get("reply_to", "")
+            st.session_state.return_path_input = selected_sample.get("return_path", "")
+            st.session_state.subject_input = selected_sample["subject"]
+            st.session_state.attachment_name_input = selected_sample.get("attachment_name", "")
+            st.session_state.body_input = selected_sample["body"]
 
     header_col_1, header_col_2 = st.columns(2, gap="small")
 
