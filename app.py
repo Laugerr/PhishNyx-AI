@@ -1,11 +1,15 @@
 import json
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 import streamlit as st
 
 from core.analyzer import analyze_email
 from core.report import build_report_filename, generate_json_report
+
+
+CASE_STATUS_OPTIONS = ["Open", "Needs Review", "Closed"]
+CASE_DISPOSITION_OPTIONS = ["Escalate", "Monitor", "Benign", "Block Sender"]
 
 
 def load_css(file_name: str) -> None:
@@ -34,6 +38,53 @@ def load_sample_emails() -> list[dict]:
 
 def sample_option_label(sample: dict) -> str:
     return f'{sample.get("category", "Scenario")} - {sample["label"]}'
+
+
+def create_case_id() -> str:
+    return f"PNX-{datetime.now().strftime('%y%m%d-%H%M%S')}"
+
+
+def default_disposition(verdict: str) -> str:
+    if verdict == "Likely Phishing":
+        return "Escalate"
+    if verdict == "Suspicious":
+        return "Monitor"
+    return "Benign"
+
+
+def default_status(verdict: str) -> str:
+    if verdict == "Likely Phishing":
+        return "Open"
+    if verdict == "Suspicious":
+        return "Needs Review"
+    return "Closed"
+
+
+def build_case_record(sender: str, subject: str, result: dict) -> dict:
+    timestamp = datetime.now(timezone.utc)
+    return {
+        "case_id": create_case_id(),
+        "status": default_status(result["verdict"]),
+        "disposition": default_disposition(result["verdict"]),
+        "created_at": timestamp.isoformat().replace("+00:00", "Z"),
+        "display_time": timestamp.strftime("%H:%M"),
+        "sender": sender.strip() or "Not provided",
+        "subject": subject.strip() or "No subject",
+        "verdict": result["verdict"],
+        "score": result["score"],
+    }
+
+
+def build_case_metadata(case_record: dict | None) -> dict:
+    if not case_record:
+        return {}
+
+    return {
+        "case_id": case_record.get("case_id", ""),
+        "status": case_record.get("status", ""),
+        "disposition": case_record.get("disposition", ""),
+        "created_at": case_record.get("created_at", ""),
+    }
 
 
 def render_flag_items(flags: list[str]) -> str:
@@ -140,16 +191,6 @@ def build_analyst_explanation(result: dict | None) -> str:
     )
 
 
-def build_recent_scan_item(sender: str, subject: str, result: dict) -> dict:
-    return {
-        "sender": sender.strip() or "Not provided",
-        "subject": subject.strip() or "No subject",
-        "verdict": result["verdict"],
-        "score": result["score"],
-        "timestamp": datetime.now().strftime("%H:%M"),
-    }
-
-
 def render_header_overview(display_name: str, reply_to: str, return_path: str, attachment_name: str) -> str:
     entries = [
         ("Display Name", display_name or "Not provided"),
@@ -180,7 +221,8 @@ def render_recent_scans(history: list[dict]) -> str:
             f'<div class="history-top"><span class="history-verdict">{item["verdict"]}</span>'
             f'<span class="history-score">{item["score"]}/100</span></div>'
             f'<div class="history-subject">{item["subject"]}</div>'
-            f'<div class="history-meta">{item["sender"]} &bull; {item["timestamp"]}</div>'
+            f'<div class="history-case">{item["case_id"]} - {item["status"]} - {item["disposition"]}</div>'
+            f'<div class="history-meta">{item["sender"]} &bull; {item["display_time"]}</div>'
             "</div>"
         )
     return html
@@ -220,6 +262,28 @@ def render_severity_breakdown(breakdown: list[dict]) -> str:
     return html
 
 
+def render_case_summary(case_record: dict | None) -> str:
+    if not case_record:
+        return '<div class="status-empty">A case record will be created after the next analysis runs.</div>'
+
+    rows = [
+        ("Case ID", case_record["case_id"]),
+        ("Created", case_record["created_at"].replace("T", " ").replace("Z", " UTC")),
+        ("Status", case_record["status"]),
+        ("Disposition", case_record["disposition"]),
+    ]
+
+    html = ""
+    for label, value in rows:
+        html += (
+            '<div class="case-row">'
+            f'<span class="case-key">{label}</span>'
+            f'<span class="case-value">{value}</span>'
+            "</div>"
+        )
+    return html
+
+
 st.set_page_config(
     page_title="PhishNyx AI",
     page_icon="P",
@@ -248,6 +312,14 @@ if "recent_scans" not in st.session_state:
     st.session_state.recent_scans = []
 if "selected_sample_id" not in st.session_state:
     st.session_state.selected_sample_id = sample_emails[0]["id"] if sample_emails else None
+if "latest_result" not in st.session_state:
+    st.session_state.latest_result = None
+if "current_case" not in st.session_state:
+    st.session_state.current_case = None
+if "case_status" not in st.session_state:
+    st.session_state.case_status = CASE_STATUS_OPTIONS[0]
+if "case_disposition" not in st.session_state:
+    st.session_state.case_disposition = CASE_DISPOSITION_OPTIONS[1]
 
 valid_sample_ids = {sample["id"] for sample in sample_emails}
 if sample_emails and st.session_state.selected_sample_id not in valid_sample_ids:
@@ -388,10 +460,6 @@ with left:
 
     st.markdown("</div></div>", unsafe_allow_html=True)
 
-result = None
-report_json = None
-report_file_name = "phishnyx_report.json"
-
 if analyze_clicked:
     if not body.strip():
         st.warning("Please enter the email body before running the analysis.")
@@ -405,18 +473,41 @@ if analyze_clicked:
             return_path=return_path,
             attachment_name=attachment_name,
         )
-        report_json = generate_json_report(
-            sender,
-            subject,
-            result,
-            display_name=display_name,
-            reply_to=reply_to,
-            return_path=return_path,
-            attachment_name=attachment_name,
-        )
-        report_file_name = build_report_filename(result)
-        scan_item = build_recent_scan_item(sender, subject, result)
-        st.session_state.recent_scans = [scan_item, *st.session_state.recent_scans[:4]]
+        case_record = build_case_record(sender, subject, result)
+        st.session_state.latest_result = result
+        st.session_state.current_case = case_record
+        st.session_state.case_status = case_record["status"]
+        st.session_state.case_disposition = case_record["disposition"]
+        st.session_state.recent_scans = [case_record, *st.session_state.recent_scans[:7]]
+
+result = st.session_state.latest_result
+current_case = st.session_state.current_case
+
+if current_case:
+    current_case["status"] = st.session_state.case_status
+    current_case["disposition"] = st.session_state.case_disposition
+    if st.session_state.recent_scans:
+        for index, item in enumerate(st.session_state.recent_scans):
+            if item["case_id"] == current_case["case_id"]:
+                st.session_state.recent_scans[index] = current_case.copy()
+                break
+
+case_metadata = build_case_metadata(current_case)
+report_json = None
+report_file_name = "phishnyx_report.json"
+
+if result:
+    report_json = generate_json_report(
+        sender,
+        subject,
+        result,
+        display_name=display_name,
+        reply_to=reply_to,
+        return_path=return_path,
+        attachment_name=attachment_name,
+        case_metadata=case_metadata,
+    )
+    report_file_name = build_report_filename(result)
 
 score = result["score"] if result else 0
 verdict = result["verdict"] if result else "Awaiting Analysis"
@@ -486,6 +577,41 @@ with center:
         )
 
     st.markdown("</div><div class=\"result-panel-stack\">", unsafe_allow_html=True)
+
+    case_col_1, case_col_2 = st.columns([1.18, 0.82], gap="small")
+
+    with case_col_1:
+        st.markdown(
+            f"""
+            <div class="recommend-card result-block result-case-block">
+                <div class="block-heading result-block-heading"><span class="heading-pill">CASE</span><span>Case Record</span></div>
+                {render_case_summary(current_case)}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with case_col_2:
+        st.markdown(
+            """
+            <div class="url-card result-block result-case-controls">
+                <div class="block-heading result-block-heading"><span class="heading-pill">FLOW</span><span>Case Workflow</span></div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.selectbox(
+            "Case Status",
+            CASE_STATUS_OPTIONS,
+            key="case_status",
+            disabled=current_case is None,
+        )
+        st.selectbox(
+            "Disposition",
+            CASE_DISPOSITION_OPTIONS,
+            key="case_disposition",
+            disabled=current_case is None,
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown(
         f"""

@@ -11,8 +11,10 @@ def build_report_payload(
     reply_to: str = "",
     return_path: str = "",
     attachment_name: str = "",
+    case_metadata: dict | None = None,
 ) -> dict:
     return {
+        "case": case_metadata or {},
         "display_name": display_name.strip() if display_name else "",
         "sender": sender.strip() if sender else "",
         "reply_to": reply_to.strip() if reply_to else "",
@@ -41,6 +43,7 @@ def generate_json_report(
     reply_to: str = "",
     return_path: str = "",
     attachment_name: str = "",
+    case_metadata: dict | None = None,
 ) -> str:
     report_payload = build_report_payload(
         sender,
@@ -50,6 +53,7 @@ def generate_json_report(
         reply_to=reply_to,
         return_path=return_path,
         attachment_name=attachment_name,
+        case_metadata=case_metadata,
     )
     return json.dumps(report_payload, indent=4)
 

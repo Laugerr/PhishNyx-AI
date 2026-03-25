@@ -997,6 +997,43 @@ header[data-testid="stHeader"] {
     line-height: 1.35;
 }
 
+.history-case {
+    color: #ffc98b;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.case-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.7rem;
+    padding: 0.45rem 0.1rem;
+    border-bottom: 1px dotted rgba(177, 190, 244, 0.24);
+}
+
+.case-row:last-child {
+    border-bottom: 0;
+}
+
+.case-key {
+    min-width: 96px;
+    color: #ffca86;
+    font-size: 0.76rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.03rem;
+}
+
+.case-value {
+    color: #e6f1ff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-align: right;
+    word-break: break-word;
+}
+
 .triage-overview {
     margin-bottom: 0.6rem;
 }
