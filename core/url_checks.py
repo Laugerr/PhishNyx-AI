@@ -1,3 +1,4 @@
+import ipaddress
 import re
 from urllib.parse import urlparse
 
@@ -28,11 +29,6 @@ SUSPICIOUS_URL_KEYWORDS = [
     "password",
 ]
 
-IP_URL_PATTERN = re.compile(
-    r"^(?:http[s]?://)?(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?(?:/.*)?$",
-    re.IGNORECASE,
-)
-
 URL_PATTERN = re.compile(
     r"""(?i)\b((?:https?://|www\.)[^\s<>"']+)"""
 )
@@ -61,7 +57,7 @@ def get_domain(url: str) -> str:
         if domain.startswith("www."):
             domain = domain[4:]
         return domain
-    except Exception:
+    except ValueError:
         return ""
 
 
@@ -70,7 +66,15 @@ def is_shortener(domain: str) -> bool:
 
 
 def is_ip_url(url: str) -> bool:
-    return bool(IP_URL_PATTERN.match(url))
+    try:
+        parsed = urlparse(url if "://" in url else f"http://{url}")
+        host = parsed.hostname
+        if not host:
+            return False
+        ipaddress.ip_address(host)
+        return True
+    except ValueError:
+        return False
 
 
 def has_suspicious_keywords(url: str) -> bool:
@@ -98,30 +102,45 @@ def analyze_urls(text: str) -> dict:
         details.append(f"Found {len(urls)} URLs, which may indicate phishing or link spraying.")
         score += 10
 
+    ip_urls = []
+    shortened_domains = []
+    keyword_urls = []
+
     for url in urls:
         domain = get_domain(url)
 
         if is_ip_url(url):
-            flags.append(f"Raw IP-based URL detected: {url}")
-            details.append("Phishing emails may use direct IP links to avoid domain-based trust signals.")
-            score += 25
+            ip_urls.append(url)
 
-        if domain and is_shortener(domain):
-            flags.append(f"Shortened URL detected: {domain}")
-            details.append("Shortened links can obscure the real destination.")
-            score += 15
+        if domain and is_shortener(domain) and domain not in shortened_domains:
+            shortened_domains.append(domain)
 
         if has_suspicious_keywords(url):
-            flags.append(f"Suspicious URL keyword pattern detected: {url}")
-            details.append("The URL contains phishing-associated words such as login, verify, or reset.")
-            score += 10
+            keyword_urls.append(url)
 
-    unique_flags = list(dict.fromkeys(flags))
-    unique_details = list(dict.fromkeys(details))
+    if ip_urls:
+        sample = ip_urls[0]
+        label = f"Raw IP-based URL detected: {sample}" if len(ip_urls) == 1 else f"Raw IP-based URLs detected ({len(ip_urls)} links)"
+        flags.append(label)
+        details.append("Phishing emails may use direct IP links to avoid domain-based trust signals.")
+        score += 25
+
+    if shortened_domains:
+        sample = shortened_domains[0]
+        label = f"Shortened URL detected: {sample}" if len(shortened_domains) == 1 else f"Shortened URLs detected ({len(shortened_domains)} links)"
+        flags.append(label)
+        details.append("Shortened links can obscure the real destination.")
+        score += 15
+
+    if keyword_urls:
+        label = f"Suspicious URL keyword pattern detected: {keyword_urls[0]}" if len(keyword_urls) == 1 else f"Suspicious URL keyword patterns detected ({len(keyword_urls)} links)"
+        flags.append(label)
+        details.append("URLs contain phishing-associated words such as login, verify, or reset.")
+        score += 10
 
     return {
         "urls": urls,
-        "flags": unique_flags,
-        "details": unique_details,
+        "flags": flags,
+        "details": details,
         "score": min(score, 40),
     }

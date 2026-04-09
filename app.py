@@ -1,3 +1,4 @@
+import html
 import json
 from pathlib import Path
 from datetime import datetime, timezone
@@ -12,8 +13,11 @@ CASE_STATUS_OPTIONS = ["Open", "Needs Review", "Closed"]
 CASE_DISPOSITION_OPTIONS = ["Escalate", "Monitor", "Benign", "Block Sender"]
 
 
+_HERE = Path(__file__).parent
+
+
 def load_css(file_name: str) -> None:
-    css_path = Path(file_name)
+    css_path = _HERE / file_name
     if css_path.exists():
         with open(css_path, "r", encoding="utf-8") as css_file:
             st.markdown(f"<style>{css_file.read()}</style>", unsafe_allow_html=True)
@@ -28,7 +32,7 @@ def verdict_class(score: int) -> str:
 
 
 def load_sample_emails() -> list[dict]:
-    sample_path = Path("data/sample_emails.json")
+    sample_path = _HERE / "data" / "sample_emails.json"
     if not sample_path.exists():
         return []
 
@@ -91,20 +95,20 @@ def render_flag_items(flags: list[str]) -> str:
     if not flags:
         return '<div class="status-empty">No red flags triggered by the current rule set.</div>'
 
-    html = ""
+    markup = ""
     for flag in flags:
-        html += f'<div class="flag-item"><span class="item-icon">!</span><span>{flag}</span></div>'
-    return html
+        markup += f'<div class="flag-item"><span class="item-icon">!</span><span>{html.escape(flag)}</span></div>'
+    return markup
 
 
 def render_url_items(urls: list[str]) -> str:
     if not urls:
         return '<div class="status-empty">No URLs found in the submitted email body.</div>'
 
-    html = ""
+    markup = ""
     for url in urls:
-        html += f'<div class="url-item"><span class="item-icon">LINK</span><span>{url}</span></div>'
-    return html
+        markup += f'<div class="url-item"><span class="item-icon">LINK</span><span>{html.escape(url)}</span></div>'
+    return markup
 
 
 def render_indicator_items(flags: list[str], url_score: int, has_result: bool) -> str:
@@ -199,50 +203,50 @@ def render_header_overview(display_name: str, reply_to: str, return_path: str, a
         ("Attachment", attachment_name or "None"),
     ]
 
-    html = ""
+    markup = ""
     for label, value in entries:
-        html += (
+        markup += (
             '<div class="header-item">'
             f'<span class="header-key">{label}</span>'
-            f'<span class="header-value">{value}</span>'
+            f'<span class="header-value">{html.escape(value)}</span>'
             "</div>"
         )
-    return html
+    return markup
 
 
 def render_recent_scans(history: list[dict]) -> str:
     if not history:
         return '<div class="status-empty">Recent analyses will appear here after you scan an email.</div>'
 
-    html = ""
+    markup = ""
     for item in history:
-        html += (
+        markup += (
             '<div class="history-item">'
-            f'<div class="history-top"><span class="history-verdict">{item["verdict"]}</span>'
+            f'<div class="history-top"><span class="history-verdict">{html.escape(item["verdict"])}</span>'
             f'<span class="history-score">{item["score"]}/100</span></div>'
-            f'<div class="history-subject">{item["subject"]}</div>'
-            f'<div class="history-case">{item["case_id"]} - {item["status"]} - {item["disposition"]}</div>'
-            f'<div class="history-meta">{item["sender"]} &bull; {item["display_time"]}</div>'
+            f'<div class="history-subject">{html.escape(item["subject"])}</div>'
+            f'<div class="history-case">{html.escape(item["case_id"])} - {html.escape(item["status"])} - {html.escape(item["disposition"])}</div>'
+            f'<div class="history-meta">{html.escape(item["sender"])} &bull; {html.escape(item["display_time"])}</div>'
             "</div>"
         )
-    return html
+    return markup
 
 
 def render_triage_findings(findings: list[dict]) -> str:
     if not findings:
         return '<div class="status-empty">Priority findings will appear here after an analysis runs.</div>'
 
-    html = ""
+    markup = ""
     for finding in findings:
         severity = finding.get("severity", "low")
-        html += (
+        markup += (
             f'<div class="triage-item triage-{severity}">'
-            f'<div class="triage-top"><span class="triage-flag">{finding["flag"]}</span>'
+            f'<div class="triage-top"><span class="triage-flag">{html.escape(finding["flag"])}</span>'
             f'<span class="triage-severity">{severity.upper()}</span></div>'
-            f'<div class="triage-meta">{finding["why"]}</div>'
+            f'<div class="triage-meta">{html.escape(finding["why"])}</div>'
             "</div>"
         )
-    return html
+    return markup
 
 
 def render_severity_breakdown(breakdown: list[dict]) -> str:
@@ -266,22 +270,26 @@ def render_case_summary(case_record: dict | None) -> str:
     if not case_record:
         return '<div class="status-empty">A case record will be created after the next analysis runs.</div>'
 
+    created_str = datetime.fromisoformat(
+        case_record["created_at"].replace("Z", "+00:00")
+    ).strftime("%Y-%m-%d %H:%M UTC")
+
     rows = [
         ("Case ID", case_record["case_id"]),
-        ("Created", case_record["created_at"].replace("T", " ").replace("Z", " UTC")),
+        ("Created", created_str),
         ("Status", case_record["status"]),
         ("Disposition", case_record["disposition"]),
     ]
 
-    html = ""
+    markup = ""
     for label, value in rows:
-        html += (
+        markup += (
             '<div class="case-row">'
             f'<span class="case-key">{label}</span>'
-            f'<span class="case-value">{value}</span>'
+            f'<span class="case-value">{html.escape(value)}</span>'
             "</div>"
         )
-    return html
+    return markup
 
 
 st.set_page_config(
@@ -523,10 +531,11 @@ urls_found = result.get("urls_found", []) if result else []
 url_score = result.get("url_score", 0) if result else 0
 triage_findings = result.get("triage_findings", []) if result else []
 severity_breakdown = result.get("severity_breakdown", []) if result else []
-triage_overview = result.get("triage_overview", "Run the analyzer to generate category-level triage priorities.") if result else (
+triage_overview = html.escape(
+    result.get("triage_overview", "Run the analyzer to generate category-level triage priorities.") if result else
     "Run the analyzer to generate category-level triage priorities."
 )
-sender_display = sender.strip() if sender.strip() else "Not provided"
+sender_display = html.escape(sender.strip() if sender.strip() else "Not provided")
 shield_class, shield_label = shield_state(score, verdict)
 
 with center:
