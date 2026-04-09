@@ -142,15 +142,15 @@ def render_indicator_items(flags: list[str], url_score: int, has_result: bool) -
         ("Risky URLs", url_score > 0, "ALRT"),
     ]
 
-    html = ""
+    markup = ""
     for label, is_active, active_text in indicators:
         status_class = "indicator-active" if is_active else "indicator-idle"
         status_text = active_text if is_active else ("CHK" if has_result else "SCAN")
-        html += (
+        markup += (
             f'<div class="indicator-item {status_class}">'
             f'<span class="item-icon">{status_text}</span><span>{label}</span></div>'
         )
-    return html
+    return markup
 
 
 def shield_state(score: int, verdict: str) -> tuple[str, str]:
@@ -216,16 +216,24 @@ def render_header_overview(display_name: str, reply_to: str, return_path: str, a
 
 def render_recent_scans(history: list[dict]) -> str:
     if not history:
-        return '<div class="status-empty">Recent analyses will appear here after you scan an email.</div>'
+        return '<div class="status-empty">No scans yet. Run an analysis to see recent activity here.</div>'
 
     markup = ""
     for item in history:
+        verdict_val = item["verdict"]
+        if "Phishing" in verdict_val:
+            verdict_cls = "risk-high"
+        elif "Suspicious" in verdict_val:
+            verdict_cls = "risk-mid"
+        else:
+            verdict_cls = "risk-low"
         markup += (
             '<div class="history-item">'
-            f'<div class="history-top"><span class="history-verdict">{html.escape(item["verdict"])}</span>'
+            f'<div class="history-top">'
+            f'<span class="history-verdict {verdict_cls}">{html.escape(verdict_val)}</span>'
             f'<span class="history-score">{item["score"]}/100</span></div>'
             f'<div class="history-subject">{html.escape(item["subject"])}</div>'
-            f'<div class="history-case">{html.escape(item["case_id"])} - {html.escape(item["status"])} - {html.escape(item["disposition"])}</div>'
+            f'<div class="history-case">{html.escape(item["case_id"])} &middot; {html.escape(item["status"])} &middot; {html.escape(item["disposition"])}</div>'
             f'<div class="history-meta">{html.escape(item["sender"])} &bull; {html.escape(item["display_time"])}</div>'
             "</div>"
         )
@@ -253,17 +261,17 @@ def render_severity_breakdown(breakdown: list[dict]) -> str:
     if not breakdown:
         return '<div class="status-empty">Category severity will appear here after an analysis runs.</div>'
 
-    html = ""
+    markup = ""
     for item in breakdown:
         severity = item.get("severity", "low")
-        html += (
+        markup += (
             f'<div class="severity-row severity-{severity}">'
             f'<span class="severity-label">{item["label"]}</span>'
             f'<span class="severity-badge">{severity.upper()}</span>'
             f'<span class="severity-count">{item["count"]}</span>'
             "</div>"
         )
-    return html
+    return markup
 
 
 def render_case_summary(case_record: dict | None) -> str:
@@ -343,6 +351,11 @@ st.markdown(
         <div class="particle-field particle-bubbles"></div>
         <div class="particle-field particle-hex"></div>
         <div class="particle-field particle-dust"></div>
+        <div class="planet planet-a"></div>
+        <div class="planet planet-b"></div>
+        <div class="shooting-star shooting-a"></div>
+        <div class="shooting-star shooting-b"></div>
+        <div class="shooting-star shooting-c"></div>
         <div class="grid-haze"></div>
         <div class="scan-line scan-line-a"></div>
         <div class="scan-line scan-line-b"></div>
@@ -359,12 +372,22 @@ st.markdown(
                 <div class="hero-crescent">&#9790;</div>
                 <div class="hero-title">PhishNyx AI</div>
             </div>
-            <div class="hero-subtitle">AI-Powered Phishing Detection Simulator</div>
+            <div class="hero-subtitle">AI-Powered Phishing Detection &amp; SOC Triage Simulator</div>
             <div class="badge-row">
                 <span class="hero-badge">&#9993; Email Threat Analysis</span>
                 <span class="hero-badge">&#9672; Risk Scoring Engine</span>
                 <span class="hero-badge">&#11042; SOC-Inspired Workflow</span>
             </div>
+        </div>
+        <div class="hero-status-bar">
+            <span class="hsb-dot hsb-dot-live"></span>
+            <span class="hsb-item">v1.3.0</span>
+            <span class="hsb-sep">&#8231;</span>
+            <span class="hsb-item">Rule-Based Detection Engine</span>
+            <span class="hsb-sep">&#8231;</span>
+            <span class="hsb-item">Case Management</span>
+            <span class="hsb-sep">&#8231;</span>
+            <span class="hsb-item">JSON Export</span>
         </div>
     </div>
     """,
@@ -409,7 +432,10 @@ with left:
             f'<div class="sample-summary">{selected_sample.get("summary", "")}</div>',
             unsafe_allow_html=True,
         )
-        if st.button("Load Selected Sample", key="load_selected_sample", use_container_width=True):
+        st.markdown('<div class="load-btn-wrap">', unsafe_allow_html=True)
+        load_clicked = st.button("Load Selected Sample", key="load_selected_sample", use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        if load_clicked:
             st.session_state.display_name_input = selected_sample.get("display_name", "")
             st.session_state.sender_input = selected_sample["sender"]
             st.session_state.reply_to_input = selected_sample.get("reply_to", "")
@@ -464,7 +490,9 @@ with left:
         height=220,
         key="body_input",
     )
+    st.markdown('<div class="analyze-btn-wrap">', unsafe_allow_html=True)
     analyze_clicked = st.button("Analyze Threat", use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("</div></div>", unsafe_allow_html=True)
 
@@ -584,6 +612,15 @@ with center:
             """,
             unsafe_allow_html=True,
         )
+
+    score_pct = min(score, 100)
+    score_color_class = "spf-high" if score >= 50 else ("spf-mid" if score >= 25 else "spf-low")
+    st.markdown(
+        f'<div class="score-progress-track">'
+        f'<div class="score-progress-fill {score_color_class}" style="width:{score_pct}%"></div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
 
     st.markdown("</div><div class=\"result-panel-stack\">", unsafe_allow_html=True)
 
